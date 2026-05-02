@@ -84,8 +84,54 @@ HAVING (SUM(b.sb) + SUM(b.cs))>=20
 ORDER BY success_percentage DESC
 LIMIT 1;
 
--- 7.  From 1970 – 2016, what is the largest number of wins for a team that did not win the world series? What is the smallest number of wins for a team that did win the world series? Doing this will probably result in an unusually small number of wins for a world series champion – determine why this is the case. Then redo your query, excluding the problem year. How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
+-- 7.  From 1970 – 2016, what is the largest number of wins for a team that did not win the world series? 
 
+SELECT name, yearid, w, wswin
+FROM teams
+WHERE yearid BETWEEN 1970 AND 2016
+	AND (wswin = 'N')
+ORDER BY w desc
+LIMIT 1;
+
+-- What is the smallest number of wins for a team that did win the world series?
+
+SELECT name, yearid, w, wswin
+FROM teams
+WHERE yearid BETWEEN 1970 AND 2016
+	AND (wswin = 'Y')
+ORDER BY w asc
+LIMIT 1;
+---Doing this will probably result in an unusually small number of wins for a world series champion – determine why this is the case. 
+
+--ANSWER: 1981 was a year where they didn't play for 50 games (according to Google).
+
+-- Then redo your query, excluding the problem year. 
+
+SELECT name, yearid, l, wswin
+FROM teams
+WHERE yearid BETWEEN 1970 AND 2016
+	AND yearid <> 1981
+	AND ((wswin = 'N') OR (wswin = 'Y'));
+
+-- How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
+
+SELECT name, yearid, w, wswin
+FROM teams
+WHERE yearid BETWEEN 1970 AND 2016
+AND yearid <> 1981
+  AND ((wswin = 'N') OR (wswin = 'Y'));
+  
+WITH max_wins_per_year AS (SELECT yearid, MAX(w) as max_w
+	FROM teams
+	WHERE yearid BETWEEN 1970 AND 2016 AND yearid <> 1981
+	GROUP BY yearid)
+SELECT
+	SUM(CASE WHEN t.wswin = 'Y' THEN 1 ELSE 0 END) AS frequent_winners,
+	COUNT(*) AS total_years,
+	ROUND(SUM(CASE WHEN t.wswin = 'Y' THEN 1 ELSE 0 END)::numeric / COUNT(*) * 100, 2) AS percentage
+FROM teams t
+JOIN max_wins_per_year mw ON t.yearid = mw.yearid AND t.w = mw.max_w
+WHERE t.yearid BETWEEN 1970 AND 2016 AND t.yearid <> 1981;
 
 -- 8. Using the attendance figures from the homegames table, find the teams and parks which had the top 5 average attendance per game in 2016 (where average attendance is defined as total attendance divided by number of games). 
 --Only consider parks where there were at least 10 games played. 
