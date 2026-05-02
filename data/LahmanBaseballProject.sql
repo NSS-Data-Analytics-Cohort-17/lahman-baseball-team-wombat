@@ -60,6 +60,14 @@ GROUP BY position;
 ---Round the numbers you report to 2 decimal places. Do the same for home runs per game. Do you see any trends?
 
 
+SELECT (teams.yearid / 10) * 10 AS decade,
+	ROUND(CAST(SUM(teams.so) AS NUMERIC) / SUM(teams.g), 2) AS avg_so_per_game,
+	ROUND(CAST(SUM(teams.hr) AS NUMERIC) / SUM(teams.g), 2) AS avg_hr_per_game
+FROM teams
+WHERE teams.yearid >= 1920
+GROUP BY decade
+ORDER BY decade;
+
 -- 6. Find the player who had the most success stealing bases in 2016, where __success__ is measured as the % of stolen base attempts which are successful. 
 --(A stolen base attempt results either in a stolen base or being caught stealing.) Consider only players who attempted _at least_ 20 stolen bases.
 
@@ -84,26 +92,46 @@ LIMIT 1;
 --Report the park name, team name, and average attendance. Repeat for the lowest 5 average attendance.
 
 
+
 -- 9. Which managers have won the TSN Manager of the Year award in both the National League (NL) and the American League (AL)? 
 ---Give their full name and the teams that they were managing when they won the award.
 
-SELECT
+SELECT DISTINCT
 	ppl.namefirst ||' '|| ppl.namelast AS NAME,
-	am.yearid,
-	am.lgid
+	man.teamid,
+	am.yearid
 FROM awardsmanagers AS am
-	INNER JOIN people AS ppl ON am.playerid = ppl.playerid
-	INNER JOIN teams AS tm ON am.yearid = tm.yearid
-WHERE am.awardid IN 'TSN Manager of the Year'
-	AND am.playerID IN (
-		SELECT playerid
-		FROM awardsmanagers
-		WHERE awardid = 'BWAA Manager of the year'
-			AND lgID IN ('AL,'NL')
-		GROUP BY playerid
-		HAVING COUNT (DISTINCT lgID) = 2)
-	ORDER BY name, am.yearID; 
-	
+	INNER JOIN people AS ppl 
+		ON am.playerid = ppl.playerid
+	INNER JOIN managers AS man
+		ON am.playerid = man.playerid
+		AND am.yearid = man.yearid
+		AND am.lgid = man.lgid
+		---all is connected ---
+WHERE am.awardid = 'TSN Manager of the Year'
+	AND am.playerid IN (
+						SELECT playerid
+						FROM awardsmanagers
+						WHERE awardid = 'TSN Manager of the Year'
+						AND lgID IN ('AL','NL')
+						GROUP BY playerid
+						HAVING COUNT (DISTINCT lgID) = 2)
+						--subquery isolating managers winning in both leagues--
+ORDER BY name, am.yearid;
+
+
+SELECT (namefirst || ' ' || namelast) as NAME, am.yearid, am.lgid, t.name AS team
+FROM awardsmanagers AS am
+LEFT JOIN people p ON am.playerid = p.playerid
+LEFT JOIN managers m ON am.playerid = m.playerid AND am.yearid = m.yearid
+LEFT JOIN teams t ON m.teamid = t.teamid AND m.yearid = t.yearid
+WHERE am.awardid = 'TSN Manager of the Year'
+	AND am.playerid IN (SELECT playerid
+	FROM awardsmanagers
+	WHERE awardid = 'TSN Manager of the Year'
+	AND lgID IN ('AL','NL')
+	GROUP BY playerid
+HAVING COUNT(DISTINCT lgid) = 2);
 
 -- 10. Find all players who hit their career highest number of home runs in 2016. Consider only players who have played in the league for at least 10 years, and who hit at least one home run in 2016. Report the players' first and last names and the number of home runs they hit in 2016.
 
