@@ -31,8 +31,19 @@ where yearid = 2016
 group by position;
 
 --Q5
+select (teams.yearid / 10) * 10 as decade, round(sum(so :: numeric) / sum(g :: numeric)) as avg_so_per_game, round(sum(hr :: numeric) / sum(g :: numeric)) as avg_hr_per_game
+from teams
+where teams.yearid >= 1920
+group by decade
+order by decade;
+--Query from Cameron
 
 --Q6
+select playerid, namegiven, sb, cs, (sb *100 / (sb + cs)) as p
+from batting left join people using (playerid)
+where yearid = 2016 and (cs + sb) >= 20
+order by p desc
+limit 1;
 
 --Q7 **
 select name, yearid, teamid, g as games, w as wins, l as losses, wswin as World_Series_winner  
@@ -73,6 +84,24 @@ from homegames left join parks using(park) left join (select distinct teamid, na
 where year = 2016 and games >= 10
 order by avg_attendance asc
 limit 5;
+
 --Q9
+select playerid, people.namegiven, yearid, teamid, teams.name, awardid
+from awardsmanagers left join managers using(playerid, yearid) left join teams using(teamid, yearid) left join people using(playerid)
+where playerid in(select a.playerid
+			      from awardsmanagers a cross join awardsmanagers b 
+				  where a.awardid = 'TSN Manager of the Year' and a.lgid = 'NL' and b.awardid = 'TSN Manager of the Year' and b.lgid = 'AL' and a.playerid = b.playerid)
+and awardid = 'TSN Manager of the Year'
+order by playerid;
 
 --Q10
+select * 
+from(select playerid, namegiven, yearid, hr
+	 from batting b1 left join people using(playerid)
+	 where playerid in(select playerid
+				 	   from batting left join people using(playerid)
+				 	   where left(finalgame, 4) :: integer - left(debut, 4) :: integer >= 10 and (case when yearid = 2016 and hr > 0 then 'Y' else 'N' end) = 'Y')
+and b1.hr = (select max(hr)
+			 from batting b2
+			 where b2.playerid = b1.playerid))
+where yearid = 2016;
