@@ -48,11 +48,11 @@ limit 1;
 --Q7 **
 select name, yearid, teamid, g as games, w as wins, l as losses, wswin as World_Series_winner  
 from teams
-where yearid <= 2016 and yearid >= 1970 and wswin = 'N' and w = (select max(w) from teams where yearid <= 2016 and yearid >= 1970 and wswin = 'N')
+where yearid <= 2016 and yearid >= 1970 and wswin = 'N' and w = (select max(w) from teams where yearid <= 2016 and yearid >= 1970 and yearid != 1981 and wswin = 'N')
 union
 select name, yearid, teamid, g as games, w as wins, l as losses, wswin as World_Series_winner  
 from teams
-where yearid <= 2016 and yearid >= 1970 and wswin = 'Y' and w = (select min(w) from teams where yearid <= 2016 and yearid >= 1970 and wswin = 'Y');
+where yearid <= 2016 and yearid >= 1970 and wswin = 'Y' and w = (select min(w) from teams where yearid <= 2016 and yearid >= 1970  and yearid != 1981 and wswin = 'Y');
 
 --Highest Wins without winning the world series is from the Seattle Mariners in 2001 with 116 wins out of 162 games.
 
@@ -61,14 +61,46 @@ where yearid <= 2016 and yearid >= 1970 and wswin = 'Y' and w = (select min(w) f
 --in 2 winners that year. One for the first half of the season and one for the second half of the season. 
 
 select count(World_Series_winner) * 100 / 91 as Percent_of_WSWinners_with_Most_Wins
-from(
-select yearid, max(wins), World_Series_winner
-from (
-select yearid, w as wins, wswin as World_Series_Winner
-from teams
-where yearid <= 2016 and yearid >= 1970 and yearid != 1981)
-group by yearid, World_Series_Winner)
+from(select yearid, max(wins), World_Series_winner
+ 	 from (select yearid, w as wins, wswin as World_Series_Winner
+		   from teams
+		   where yearid <= 2016 and yearid >= 1970 and yearid != 1981)
+	 group by yearid, World_Series_Winner)
 where World_Series_winner = 'Y';
+
+
+select round(((select count(*)
+	   		 from(select *
+		    	  from(select yearid as yearida, max(w) as maxa, wswin as wswina
+			     	   from teams
+			     	   where yearid <= 2016 and yearid >= 1970 and yearid != 1981
+	 		    	   group by yearid, wswin
+ 			     	   order by yearid)
+			    	   cross join
+			    	  (select yearid as yearidb, max(w) as maxb, wswin as wswinb
+			     	   from teams
+			     	   where yearid <= 2016 and yearid >= 1970 and yearid != 1981
+			     	   group by yearid, wswin
+ 			     	   order by yearid)
+		    	  where yearida = yearidb and wswina = 'Y' and wswina != wswinb)
+	   	  	 where maxa > maxb)::numeric * 100
+	   	  	 /
+	   		(select count(*)
+	   		from(select *
+		    	 from(select yearid as yearida, max(w) as maxa, wswin as wswina
+			     	  from teams
+			     	  where yearid <= 2016 and yearid >= 1970 and yearid != 1981
+	 		    	  group by yearid, wswin
+ 			     	  order by yearid)
+			     	  cross join
+			    	 (select yearid as yearidb, max(w) as maxb, wswin as wswinb
+			     	  from teams
+			     	  where yearid <= 2016 and yearid >= 1970 and yearid != 1981
+			     	  group by yearid, wswin
+ 			     	  order by yearid)
+		    	 where yearida = yearidb and wswina = 'Y' and wswina != wswinb))::numeric), 2)
+	   
+
 
 --Only 49% of the world series winners have the most wins for the season.
 
